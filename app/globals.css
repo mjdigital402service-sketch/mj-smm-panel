@@ -1,0 +1,285 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================
+   MJ DIGITAL SERVICE
+   Global Design System
+   ========================================================= */
+
+@layer base {
+  :root {
+    /* Core */
+    --background: 220 33% 98%;
+    --foreground: 222 47% 11%;
+
+    /* Surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Brand */
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* Muted */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    /* Accent */
+    --accent: 214 100% 97%;
+    --accent-foreground: 221 83% 40%;
+
+    /* Status */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 35%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Borders / Inputs */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 221 83% 53%;
+
+    /* Shape */
+    --radius: 0.8rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 20% 96%;
+
+    --card: 222 41% 9%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 222 41% 9%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 217 91% 65%;
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 222 33% 15%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 222 33% 15%;
+    --muted-foreground: 217 15% 65%;
+
+    --accent: 221 39% 17%;
+    --accent-foreground: 214 100% 85%;
+
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 210 20% 96%;
+
+    --success: 142 60% 42%;
+    --success-foreground: 210 20% 96%;
+
+    --warning: 38 85% 55%;
+    --warning-foreground: 222 47% 6%;
+
+    --border: 222 33% 17%;
+    --input: 222 33% 17%;
+    --ring: 217 91% 65%;
+  }
+}
+
+/* =========================================================
+   BASE
+   ========================================================= */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings:
+      'cv11',
+      'ss01';
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground) / 0.7);
+  }
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(221 83% 53% / 0.35) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: hsl(221 83% 53% / 0.28);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(221 83% 53% / 0.5);
+}
+
+/* =========================================================
+   HIDE SCROLLBAR
+   ========================================================= */
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* =========================================================
+   BRAND UTILITIES
+   ========================================================= */
+
+@layer utilities {
+  .mj-gradient {
+    background:
+      linear-gradient(
+        135deg,
+        hsl(221 83% 53%),
+        hsl(243 75% 59%)
+      );
+  }
+
+  .mj-gradient-soft {
+    background:
+      linear-gradient(
+        135deg,
+        hsl(221 83% 53% / 0.08),
+        hsl(243 75% 59% / 0.06)
+      );
+  }
+
+  .mj-text-gradient {
+    background:
+      linear-gradient(
+        90deg,
+        hsl(221 83% 53%),
+        hsl(243 75% 59%)
+      );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .mj-glow {
+    box-shadow:
+      0 10px 30px hsl(221 83% 53% / 0.12);
+  }
+
+  .mj-card {
+    border: 1px solid hsl(var(--border));
+    border-radius: 1rem;
+    background: hsl(var(--card));
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.03),
+      0 8px 30px rgb(15 23 42 / 0.04);
+  }
+}
+
+/* =========================================================
+   CARD / SURFACE POLISH
+   ========================================================= */
+
+@layer components {
+  .dashboard-card {
+    @apply rounded-2xl border bg-card shadow-sm;
+  }
+
+  .dashboard-card-hover {
+    @apply transition-all duration-200;
+  }
+
+  .dashboard-card-hover:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 10px 30px rgb(15 23 42 / 0.07);
+  }
+}
+
+/* =========================================================
+   FOCUS
+   ========================================================= */
+
+@layer base {
+  :focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 3px hsl(var(--ring) / 0.18);
+  }
+}
+
+/* =========================================================
+   DARK MODE SURFACES
+   ========================================================= */
+
+.dark {
+  color-scheme: dark;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(217 91% 65% / 0.25);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(217 91% 65% / 0.45);
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

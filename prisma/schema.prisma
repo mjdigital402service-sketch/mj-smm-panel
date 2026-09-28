@@ -1,0 +1,543 @@
+// ============================================================================
+// SMM PANEL — DATABASE SCHEMA
+// PostgreSQL + Prisma. Decimal used for all monetary fields (never Float).
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// ENUMS
+// ----------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  DISTRIBUTOR
+  RETAILER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  IN_PROGRESS
+  COMPLETED
+  PARTIAL
+  CANCELLED
+  REFUNDED
+  FAILED
+}
+
+enum WalletTxType {
+  DEPOSIT
+  ORDER_DEBIT
+  REFUND
+  MANUAL_CREDIT
+  MANUAL_DEBIT
+  ADJUSTMENT
+  COMMISSION
+  PAYMENT
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentMethodType {
+  UPI
+  BANK_TRANSFER
+  GATEWAY
+  MANUAL
+}
+
+enum MarkupType {
+  FIXED
+  PERCENTAGE
+}
+
+enum TicketStatus {
+  OPEN
+  ANSWERED
+  CUSTOMER_REPLIED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+  WALLET_CREDITED
+  WALLET_LOW_BALANCE
+  PAYMENT_APPROVED
+  PAYMENT_REJECTED
+  TICKET_REPLY
+  ACCOUNT_SUSPENDED
+  SYSTEM_ANNOUNCEMENT
+}
+
+// ----------------------------------------------------------------------------
+// USERS & HIERARCHY
+// ----------------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  email        String     @unique
+  phone        String?
+  passwordHash String
+  role         Role
+  status       UserStatus @default(ACTIVE)
+  name         String
+
+  // Hierarchy: a RETAILER belongs to a DISTRIBUTOR. ADMIN has no parent.
+  distributorId String?
+  distributor   User?   @relation("DistributorRetailers", fields: [distributorId], references: [id])
+  retailers     User[]  @relation("DistributorRetailers")
+
+  creditLimit          Decimal @default(0) @db.Decimal(14, 4)
+  allowNegativeBalance Boolean @default(false)
+
+  lastLoginAt DateTime?
+  lastLoginIp String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallet             Wallet?
+  ordersPlaced       Order[]              @relation("OrderRetailer")
+  ordersUnderDist    Order[]              @relation("OrderDistributor")
+  walletTxns         WalletTransaction[]
+  payments           Payment[]
+  apiKeys            ApiKey[]
+  ticketsCreated     Ticket[]             @relation("TicketCreatedBy")
+  ticketsAssigned    Ticket[]             @relation("TicketAssignedTo")
+  ticketMessages     TicketMessage[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  retailerPricing    RetailerPricing[]    @relation("RetailerPricingOwner")
+  distributorPricing DistributorPricing[] @relation("DistributorPricingOwner")
+  sessions           Session[]
+
+  @@index([distributorId])
+  @@index([role, status])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ----------------------------------------------------------------------------
+// WALLET (LEDGER-BASED)
+// ----------------------------------------------------------------------------
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Decimal  @default(0) @db.Decimal(14, 4)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model WalletTransaction {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id])
+  type            WalletTxType
+  amount          Decimal      @db.Decimal(14, 4)
+  previousBalance Decimal      @db.Decimal(14, 4)
+  newBalance      Decimal      @db.Decimal(14, 4)
+  reference       String? // e.g. order id, payment id
+  description     String
+  createdAt       DateTime     @default(now())
+
+  @@index([userId, createdAt])
+  @@index([reference])
+}
+
+// ----------------------------------------------------------------------------
+// PAYMENTS
+// ----------------------------------------------------------------------------
+
+model PaymentMethod {
+  id        String            @id @default(cuid())
+  name      String
+  type      PaymentMethodType
+  isActive  Boolean           @default(true)
+  config    Json              @default("{}") // e.g. UPI id, bank details, gateway public config
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  payments Payment[]
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  paymentMethodId String
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  amount          Decimal       @db.Decimal(14, 4)
+  status          PaymentStatus @default(PENDING)
+  transactionRef  String?
+  proofUrl        String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId, status])
+}
+
+// ----------------------------------------------------------------------------
+// PROVIDERS (own abstraction layer — see /server/providers)
+// ----------------------------------------------------------------------------
+
+model Provider {
+  id               String    @id @default(cuid())
+  name             String
+  apiUrl           String
+  apiKeyEncrypted  String // encrypted at rest, never sent to browser
+  adapterKey       String // maps to a registered adapter, e.g. "mock", "generic-smm"
+  isActive         Boolean   @default(true)
+  balance          Decimal?  @db.Decimal(14, 4)
+  balanceCheckedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  services ProviderService[]
+  orders   Order[]
+  logs     ProviderLog[]
+}
+
+model ProviderService {
+  id                String   @id @default(cuid())
+  providerId        String
+  provider          Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerServiceId String // the ID on the provider's side
+  name              String
+  costPrice         Decimal  @db.Decimal(14, 4)
+  min               Int
+  max               Int
+  dripfeedSupported Boolean  @default(false)
+  refillSupported   Boolean  @default(false)
+  cancelSupported   Boolean  @default(false)
+  rawPayload        Json?
+  lastSyncedAt      DateTime @default(now())
+
+  mappedServices Service[]
+
+  @@unique([providerId, providerServiceId])
+}
+
+model ProviderLog {
+  id           String   @id @default(cuid())
+  providerId   String
+  provider     Provider @relation(fields: [providerId], references: [id])
+  action       String // e.g. "createOrder", "getStatus", "getBalance"
+  requestMeta  Json?
+  responseMeta Json?
+  success      Boolean
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([providerId, createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// CATEGORIES & SERVICES
+// ----------------------------------------------------------------------------
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services Service[]
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  serviceCode Int      @unique @default(autoincrement()) // public-facing "Service ID"
+  name        String
+  description String?
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  providerServiceId String?
+  providerService   ProviderService? @relation(fields: [providerServiceId], references: [id])
+
+  serviceType      String     @default("default")
+  costPrice        Decimal    @db.Decimal(14, 4)
+  adminMarkupType  MarkupType @default(PERCENTAGE)
+  adminMarkupValue Decimal    @default(10) @db.Decimal(10, 4)
+  // Admin (base resale) price is computed from cost + admin markup at read time,
+  // distributor/retailer prices layer on top via PricingRule / *Pricing overrides.
+
+  minQuantity     Int     @default(1)
+  maxQuantity     Int     @default(100000)
+  dripfeedEnabled Boolean @default(false)
+  refillEnabled   Boolean @default(false)
+  cancelEnabled   Boolean @default(false)
+  isActive        Boolean @default(true)
+  sortOrder       Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders             Order[]
+  distributorPricing DistributorPricing[]
+  retailerPricing    RetailerPricing[]
+
+  @@index([categoryId, isActive])
+}
+
+/// Admin-controlled default markup rules (category or service specific), applied
+/// when a Distributor/Retailer has no explicit override below.
+model PricingRule {
+  id          String     @id @default(cuid())
+  scope       String // "GLOBAL" | "CATEGORY" | "SERVICE"
+  categoryId  String?
+  serviceId   String?
+  targetRole  Role // which tier this rule prices for: DISTRIBUTOR or RETAILER
+  markupType  MarkupType
+  markupValue Decimal    @db.Decimal(10, 4)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([scope, categoryId, serviceId, targetRole])
+}
+
+/// Explicit per-distributor override price for a service (set by Admin, or by
+/// Distributor within Admin-defined limits for their own retailers via RetailerPricing).
+model DistributorPricing {
+  id            String   @id @default(cuid())
+  distributorId String
+  distributor   User     @relation("DistributorPricingOwner", fields: [distributorId], references: [id], onDelete: Cascade)
+  serviceId     String
+  service       Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  price         Decimal  @db.Decimal(14, 4)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([distributorId, serviceId])
+}
+
+model RetailerPricing {
+  id         String   @id @default(cuid())
+  retailerId String
+  retailer   User     @relation("RetailerPricingOwner", fields: [retailerId], references: [id], onDelete: Cascade)
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  price      Decimal  @db.Decimal(14, 4)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([retailerId, serviceId])
+}
+
+// ----------------------------------------------------------------------------
+// ORDERS
+// ----------------------------------------------------------------------------
+
+model Order {
+  id          String @id @default(cuid())
+  orderNumber Int    @unique @default(autoincrement())
+
+  retailerId    String
+  retailer      User    @relation("OrderRetailer", fields: [retailerId], references: [id])
+  distributorId String?
+  distributor   User?   @relation("OrderDistributor", fields: [distributorId], references: [id])
+
+  serviceId       String
+  service         Service   @relation(fields: [serviceId], references: [id])
+  providerId      String?
+  provider        Provider? @relation(fields: [providerId], references: [id])
+  providerOrderId String?
+
+  link     String
+  quantity Int
+  runs     Int?
+  interval Int?
+  comments String?
+
+  startCount Int?
+  remains    Int?
+
+  charge       Decimal @db.Decimal(14, 4) // amount charged to retailer
+  providerCost Decimal @db.Decimal(14, 4) // actual cost paid to provider
+  profit       Decimal @db.Decimal(14, 4) // charge - providerCost
+
+  status         OrderStatus @default(PENDING)
+  failureReason  String?
+  idempotencyKey String?     @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  statusHistory OrderStatusHistory[]
+
+  @@index([retailerId, createdAt])
+  @@index([distributorId, createdAt])
+  @@index([status])
+  @@index([providerOrderId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// API ACCESS (own REST API for Distributors/Retailers)
+// ----------------------------------------------------------------------------
+
+model ApiKey {
+  id                 String    @id @default(cuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyPrefix          String // shown to user, e.g. first 8 chars
+  keyHash            String    @unique // hash of the full secret key
+  isActive           Boolean   @default(true)
+  ipWhitelist        String[]  @default([])
+  rateLimitPerMinute Int       @default(60)
+  lastUsedAt         DateTime?
+  createdAt          DateTime  @default(now())
+
+  logs ApiLog[]
+
+  @@index([userId])
+}
+
+model ApiLog {
+  id         String   @id @default(cuid())
+  apiKeyId   String
+  apiKey     ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  endpoint   String
+  method     String
+  statusCode Int
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([apiKeyId, createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// TICKETS
+// ----------------------------------------------------------------------------
+
+model Ticket {
+  id           String         @id @default(cuid())
+  ticketNumber Int            @unique @default(autoincrement())
+  createdById  String
+  createdBy    User           @relation("TicketCreatedBy", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?          @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+  subject      String
+  category     String
+  priority     TicketPriority @default(MEDIUM)
+  status       TicketStatus   @default(OPEN)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  messages TicketMessage[]
+
+  @@index([createdById, status])
+  @@index([assignedToId, status])
+}
+
+model TicketMessage {
+  id            String   @id @default(cuid())
+  ticketId      String
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId      String
+  sender        User     @relation(fields: [senderId], references: [id])
+  message       String
+  attachmentUrl String?
+  createdAt     DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// NOTIFICATIONS
+// ----------------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead, createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// AUDIT LOG
+// ----------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  ipAddress  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// ----------------------------------------------------------------------------
+// SYSTEM SETTINGS
+// ----------------------------------------------------------------------------
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
