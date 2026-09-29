@@ -1,9 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
   experimental: {
     serverComponentsExternalPackages: ['argon2'],
+
+    outputFileTracingIncludes: {
+      '/*': [
+        './node_modules/argon2/prebuilds/**/*',
+      ],
+    },
   },
+
   async headers() {
     return [
       {
