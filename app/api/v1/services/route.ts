@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { authenticateApiRequest, logApiCall, ApiAuthError } from '@/server/api/apiAuth';
-import { getRetailerPrice, getDistributorPrice } from '@/server/services/pricing.service';
+import {
+  authenticateApiRequest,
+  logApiCall,
+  ApiAuthError,
+} from '@/server/api/apiAuth';
+import {
+  getRetailerPrice,
+  getDistributorPrice,
+} from '@/server/services/pricing.service';
 
 /**
  * GET/POST /api/v1/services
@@ -10,6 +17,7 @@ import { getRetailerPrice, getDistributorPrice } from '@/server/services/pricing
  */
 async function handle(request: NextRequest, key: string | null) {
   let ip = 'unknown';
+
   try {
     const auth = await authenticateApiRequest(request, key);
     ip = auth.ip;
@@ -21,7 +29,7 @@ async function handle(request: NextRequest, key: string | null) {
     });
 
     const priced = await Promise.all(
-      services.map(async (s) => {
+      services.map(async (s: any) => {
         const price =
           auth.user.role === 'DISTRIBUTOR'
             ? await getDistributorPrice(s.id, auth.user.id)
@@ -43,20 +51,42 @@ async function handle(request: NextRequest, key: string | null) {
       }),
     );
 
-    await logApiCall(auth.apiKey.id, '/api/v1/services', request.method, 200, ip);
+    await logApiCall(
+      auth.apiKey.id,
+      '/api/v1/services',
+      request.method,
+      200,
+      ip,
+    );
+
     return NextResponse.json(priced);
   } catch (err) {
-    const status = err instanceof ApiAuthError ? err.status : 500;
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal error' }, { status });
+    const status =
+      err instanceof ApiAuthError ? err.status : 500;
+
+    return NextResponse.json(
+      {
+        error:
+          err instanceof Error ? err.message : 'Internal error',
+      },
+      { status },
+    );
   }
 }
 
 export async function GET(request: NextRequest) {
-  return handle(request, request.nextUrl.searchParams.get('key'));
+  return handle(
+    request,
+    request.nextUrl.searchParams.get('key'),
+  );
 }
 
 export async function POST(request: NextRequest) {
   const body = await request.formData().catch(() => null);
-  const key = body?.get('key')?.toString() ?? request.nextUrl.searchParams.get('key');
+
+  const key =
+    body?.get('key')?.toString() ??
+    request.nextUrl.searchParams.get('key');
+
   return handle(request, key);
 }

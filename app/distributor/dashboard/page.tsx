@@ -13,7 +13,12 @@ import {
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/session';
 import { StatCard } from '@/components/shared/stat-card';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { OrderStatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/brand.config';
 import { getWalletBalance } from '@/server/services/wallet.service';
@@ -35,24 +40,29 @@ export default async function DistributorDashboard() {
     recent,
   ] = await Promise.all([
     getWalletBalance(user.id),
+
     prisma.user.count({
       where: { distributorId: user.id },
     }),
+
     prisma.user.count({
       where: {
         distributorId: user.id,
         status: 'ACTIVE',
       },
     }),
+
     prisma.order.count({
       where: { distributorId: user.id },
     }),
+
     prisma.order.count({
       where: {
         distributorId: user.id,
         createdAt: { gte: startOfToday },
       },
     }),
+
     prisma.order.count({
       where: {
         distributorId: user.id,
@@ -61,6 +71,7 @@ export default async function DistributorDashboard() {
         },
       },
     }),
+
     prisma.order.aggregate({
       where: { distributorId: user.id },
       _sum: {
@@ -68,6 +79,7 @@ export default async function DistributorDashboard() {
         profit: true,
       },
     }),
+
     prisma.order.findMany({
       where: { distributorId: user.id },
       include: {
@@ -113,6 +125,7 @@ export default async function DistributorDashboard() {
               <p className="text-xs font-medium uppercase tracking-wider text-blue-100">
                 Available Balance
               </p>
+
               <p className="mt-1 text-2xl font-bold">
                 {formatCurrency(balance.toNumber())}
               </p>
@@ -163,9 +176,11 @@ export default async function DistributorDashboard() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Total Sales
                 </p>
+
                 <p className="mt-2 text-2xl font-bold tracking-tight">
                   {formatCurrency(totalSales)}
                 </p>
+
                 <p className="mt-1 text-xs text-muted-foreground">
                   Lifetime sales generated
                 </p>
@@ -189,9 +204,11 @@ export default async function DistributorDashboard() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Total Profit
                 </p>
+
                 <p className="mt-2 text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(totalProfit)}
                 </p>
+
                 <p className="mt-1 text-xs text-muted-foreground">
                   Your total distributor profit
                 </p>
@@ -216,9 +233,11 @@ export default async function DistributorDashboard() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Active Retailers
                 </p>
+
                 <p className="mt-2 text-2xl font-bold tracking-tight">
                   {activeRetailers}
                 </p>
+
                 <p className="mt-1 text-xs text-muted-foreground">
                   Out of {totalRetailers} total retailers
                 </p>
@@ -245,6 +264,7 @@ export default async function DistributorDashboard() {
               <CardTitle className="text-base font-semibold">
                 Recent Orders
               </CardTitle>
+
               <p className="mt-1 text-xs text-muted-foreground">
                 Latest orders placed by your retailer network
               </p>
@@ -265,15 +285,19 @@ export default async function DistributorDashboard() {
                   <th className="whitespace-nowrap px-5 py-3 font-medium text-muted-foreground">
                     Order
                   </th>
+
                   <th className="whitespace-nowrap px-5 py-3 font-medium text-muted-foreground">
                     Retailer
                   </th>
+
                   <th className="whitespace-nowrap px-5 py-3 font-medium text-muted-foreground">
                     Service
                   </th>
+
                   <th className="whitespace-nowrap px-5 py-3 font-medium text-muted-foreground">
                     Charge
                   </th>
+
                   <th className="whitespace-nowrap px-5 py-3 font-medium text-muted-foreground">
                     Status
                   </th>
@@ -281,7 +305,7 @@ export default async function DistributorDashboard() {
               </thead>
 
               <tbody>
-                {recent.map((o) => (
+                {recent.map((o: any) => (
                   <tr
                     key={o.id}
                     className="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/30"
@@ -297,6 +321,7 @@ export default async function DistributorDashboard() {
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-xs font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
                           {o.retailer.name?.charAt(0)?.toUpperCase() || 'R'}
                         </div>
+
                         <span className="whitespace-nowrap font-medium">
                           {o.retailer.name}
                         </span>
@@ -360,6 +385,7 @@ export default async function DistributorDashboard() {
                 <p className="text-sm font-semibold">
                   Retailer Network
                 </p>
+
                 <p className="mt-1 text-xs text-muted-foreground">
                   {activeRetailers} active retailers are currently connected
                   to your distributor account.
@@ -380,6 +406,7 @@ export default async function DistributorDashboard() {
                 <p className="text-sm font-semibold">
                   Profit Overview
                 </p>
+
                 <p className="mt-1 text-xs text-muted-foreground">
                   Your accumulated distributor profit is{' '}
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">

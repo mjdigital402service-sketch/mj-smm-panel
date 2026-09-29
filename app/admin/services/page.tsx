@@ -47,13 +47,17 @@ export default async function AdminServicesPage() {
     }),
   ]);
 
-  const activeServices = services.filter((s) => s.isActive).length;
+  const activeServices = services.filter(
+    (s: any) => s.isActive,
+  ).length;
+
   const inactiveServices = services.length - activeServices;
 
   const averageCost =
     services.length > 0
       ? services.reduce(
-          (sum, s) => sum + s.costPrice.toNumber(),
+          (sum: number, s: any) =>
+            sum + s.costPrice.toNumber(),
           0,
         ) / services.length
       : 0;
@@ -223,7 +227,7 @@ export default async function AdminServicesPage() {
         <CardContent className="p-5 sm:p-6">
           {providers.length > 0 ? (
             <div className="space-y-3">
-              {providers.map((provider) => (
+              {providers.map((provider: any) => (
                 <div
                   key={provider.id}
                   className="flex flex-col gap-4 rounded-xl border border-border/70 bg-muted/10 p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -316,7 +320,7 @@ export default async function AdminServicesPage() {
               >
                 <option value="">Select category...</option>
 
-                {categories.map((c) => (
+                {categories.map((c: any) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
@@ -336,7 +340,7 @@ export default async function AdminServicesPage() {
               >
                 <option value="">None (manual)</option>
 
-                {providerServices.map((ps) => (
+                {providerServices.map((ps: any) => (
                   <option key={ps.id} value={ps.id}>
                     {ps.provider.name} — {ps.name}
                   </option>
@@ -506,7 +510,7 @@ export default async function AdminServicesPage() {
               </thead>
 
               <tbody>
-                {services.map((s) => (
+                {services.map((s: any) => (
                   <tr
                     key={s.id}
                     className="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/30"

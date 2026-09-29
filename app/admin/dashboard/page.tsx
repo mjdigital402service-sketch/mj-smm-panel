@@ -16,7 +16,12 @@ import {
 
 import { prisma } from '@/lib/prisma';
 import { StatCard } from '@/components/shared/stat-card';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { OrderStatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/brand.config';
 import { RevenueChart } from './revenue-chart';
@@ -41,9 +46,13 @@ async function getDashboardData() {
     last14DaysOrders,
   ] = await Promise.all([
     prisma.user.count({ where: { role: 'DISTRIBUTOR' } }),
-    prisma.user.count({ where: { role: 'DISTRIBUTOR', status: 'ACTIVE' } }),
+    prisma.user.count({
+      where: { role: 'DISTRIBUTOR', status: 'ACTIVE' },
+    }),
     prisma.user.count({ where: { role: 'RETAILER' } }),
-    prisma.user.count({ where: { role: 'RETAILER', status: 'ACTIVE' } }),
+    prisma.user.count({
+      where: { role: 'RETAILER', status: 'ACTIVE' },
+    }),
     prisma.order.count(),
     prisma.order.count({ where: { status: 'PENDING' } }),
     prisma.order.count({
@@ -149,18 +158,14 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="min-h-full space-y-6 pb-8">
-
       {/* =====================================================
           DASHBOARD HEADER
       ====================================================== */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 p-6 text-white shadow-xl shadow-blue-600/15 md:p-7">
-
-        {/* Background decoration */}
         <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-cyan-300/10 blur-3xl" />
 
         <div className="relative flex flex-col justify-between gap-6 md:flex-row md:items-center">
-
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold backdrop-blur-sm">
               <Activity className="h-3.5 w-3.5 text-cyan-200" />
@@ -227,7 +232,6 @@ export default async function AdminDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-
           <StatCard
             label="Distributors"
             value={`${d.activeDistributors} / ${d.totalDistributors}`}
@@ -272,7 +276,6 @@ export default async function AdminDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-
           <StatCard
             label="Processing"
             value={d.processingOrders}
@@ -318,7 +321,6 @@ export default async function AdminDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-
           {/* Revenue */}
           <Card className="group overflow-hidden rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
             <CardContent className="p-5">
@@ -403,10 +405,8 @@ export default async function AdminDashboardPage() {
           REVENUE CHART
       ====================================================== */}
       <Card className="overflow-hidden rounded-2xl border-slate-200 shadow-sm">
-
         <CardHeader className="border-b border-slate-100 px-5 py-4 md:px-6">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-
             <div>
               <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -444,10 +444,8 @@ export default async function AdminDashboardPage() {
           RECENT ORDERS
       ====================================================== */}
       <Card className="overflow-hidden rounded-2xl border-slate-200 shadow-sm">
-
         <CardHeader className="border-b border-slate-100 px-5 py-4 md:px-6">
           <div className="flex items-center justify-between">
-
             <div>
               <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
@@ -470,13 +468,10 @@ export default async function AdminDashboardPage() {
         </CardHeader>
 
         <CardContent className="p-0">
-
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
-
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-left">
-
                   <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Order
                   </th>
@@ -500,7 +495,7 @@ export default async function AdminDashboardPage() {
               </thead>
 
               <tbody>
-                {d.recentOrders.map((o) => (
+                {d.recentOrders.map((o: any) => (
                   <tr
                     key={o.id}
                     className="border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-50/40"
@@ -580,7 +575,6 @@ export default async function AdminDashboardPage() {
           BOTTOM SUMMARY
       ====================================================== */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-
         <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white">
@@ -634,7 +628,6 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

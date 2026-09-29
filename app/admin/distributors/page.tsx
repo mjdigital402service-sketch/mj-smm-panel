@@ -9,7 +9,12 @@ import {
 } from 'lucide-react';
 
 import { prisma } from '@/lib/prisma';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CreateUserForm } from '@/components/shared/create-user-form';
 import { UserRowActions } from '@/components/shared/user-row-actions';
@@ -35,52 +40,53 @@ export default async function AdminDistributorsPage() {
   });
 
   const activeCount = distributors.filter(
-    (d) => d.status === 'ACTIVE',
+    (d: any) => d.status === 'ACTIVE',
   ).length;
 
   const totalWallet = distributors.reduce(
-    (sum, d) => sum + Number(d.wallet?.balance ?? 0),
+    (sum: number, d: any) =>
+      sum + Number(d.wallet?.balance ?? 0),
     0,
   );
 
   const totalSales = distributors.reduce(
-    (sum, d) =>
+    (sum: number, d: any) =>
       sum +
       d.ordersUnderDist.reduce(
-        (inner, o) => inner + Number(o.charge),
+        (inner: number, o: any) =>
+          inner + Number(o.charge),
         0,
       ),
     0,
   );
 
   const totalProfit = distributors.reduce(
-    (sum, d) =>
+    (sum: number, d: any) =>
       sum +
       d.ordersUnderDist.reduce(
-        (inner, o) => inner + Number(o.profit),
+        (inner: number, o: any) =>
+          inner + Number(o.profit),
         0,
       ),
     0,
   );
 
   const totalRetailers = distributors.reduce(
-    (sum, d) => sum + d.retailers.length,
+    (sum: number, d: any) =>
+      sum + d.retailers.length,
     0,
   );
 
   return (
     <div className="min-h-full space-y-6 pb-8">
-
       {/* =====================================================
           HEADER
       ====================================================== */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 p-6 text-white shadow-xl shadow-blue-600/15 md:p-7">
-
         <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-cyan-300/10 blur-3xl" />
 
         <div className="relative flex flex-col justify-between gap-5 md:flex-row md:items-center">
-
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold backdrop-blur-sm">
               <Building2 className="h-3.5 w-3.5 text-cyan-200" />
@@ -119,7 +125,6 @@ export default async function AdminDistributorsPage() {
           SUMMARY CARDS
       ====================================================== */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-
         <Card className="rounded-2xl border-slate-200 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
@@ -219,14 +224,12 @@ export default async function AdminDistributorsPage() {
             </div>
           </CardContent>
         </Card>
-
       </div>
 
       {/* =====================================================
           CREATE DISTRIBUTOR
       ====================================================== */}
       <Card className="overflow-hidden rounded-2xl border-slate-200 shadow-sm">
-
         <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-5 py-4 md:px-6">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -253,10 +256,8 @@ export default async function AdminDistributorsPage() {
           DISTRIBUTOR TABLE
       ====================================================== */}
       <Card className="overflow-hidden rounded-2xl border-slate-200 shadow-sm">
-
         <CardHeader className="border-b border-slate-100 px-5 py-4 md:px-6">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-
             <div>
               <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
@@ -284,12 +285,9 @@ export default async function AdminDistributorsPage() {
 
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-
             <table className="w-full min-w-[1000px] text-sm">
-
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-left">
-
                   <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Distributor
                   </th>
@@ -317,19 +315,20 @@ export default async function AdminDistributorsPage() {
                   <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Actions
                   </th>
-
                 </tr>
               </thead>
 
               <tbody>
-                {distributors.map((d) => {
+                {distributors.map((d: any) => {
                   const sales = d.ordersUnderDist.reduce(
-                    (s, o) => s + Number(o.charge),
+                    (s: number, o: any) =>
+                      s + Number(o.charge),
                     0,
                   );
 
                   const profit = d.ordersUnderDist.reduce(
-                    (s, o) => s + Number(o.profit),
+                    (s: number, o: any) =>
+                      s + Number(o.profit),
                     0,
                   );
 
@@ -338,11 +337,9 @@ export default async function AdminDistributorsPage() {
                       key={d.id}
                       className="border-b border-slate-100 align-middle transition-colors last:border-0 hover:bg-blue-50/40"
                     >
-
                       {/* Distributor */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-sm font-bold text-white shadow-sm">
                             {d.name?.charAt(0)?.toUpperCase() ?? 'D'}
                           </div>
@@ -356,7 +353,6 @@ export default async function AdminDistributorsPage() {
                               @{d.username}
                             </p>
                           </div>
-
                         </div>
                       </td>
 
@@ -374,30 +370,27 @@ export default async function AdminDistributorsPage() {
                       {/* Wallet */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
-
                           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
                             <Wallet className="h-3.5 w-3.5" />
                           </div>
 
                           <span className="font-bold text-slate-800">
                             {formatCurrency(
-                              d.wallet?.balance.toNumber() ?? 0,
+                              d.wallet?.balance?.toNumber?.() ??
+                                Number(d.wallet?.balance ?? 0),
                             )}
                           </span>
-
                         </div>
                       </td>
 
                       {/* Retailers */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
-
                           <Store className="h-4 w-4 text-indigo-500" />
 
                           <span className="font-bold text-slate-700">
                             {d.retailers.length}
                           </span>
-
                         </div>
                       </td>
 
@@ -432,7 +425,6 @@ export default async function AdminDistributorsPage() {
                           status={d.status}
                         />
                       </td>
-
                     </tr>
                   );
                 })}
@@ -444,7 +436,6 @@ export default async function AdminDistributorsPage() {
                       className="px-5 py-14 text-center"
                     >
                       <div className="mx-auto flex max-w-xs flex-col items-center">
-
                         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
                           <Users className="h-6 w-6" />
                         </div>
@@ -457,15 +448,12 @@ export default async function AdminDistributorsPage() {
                           Create your first distributor account
                           using the form above.
                         </p>
-
                       </div>
                     </td>
                   </tr>
                 )}
-
               </tbody>
             </table>
-
           </div>
         </CardContent>
       </Card>
@@ -474,7 +462,6 @@ export default async function AdminDistributorsPage() {
           PERFORMANCE SUMMARY
       ====================================================== */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-
         <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white">
@@ -528,7 +515,6 @@ export default async function AdminDistributorsPage() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

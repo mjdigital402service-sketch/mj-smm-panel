@@ -43,26 +43,28 @@ export default async function AdminRetailersPage() {
   ]);
 
   const activeRetailers = retailers.filter(
-    (r) => r.status === 'ACTIVE',
+    (r: any) => r.status === 'ACTIVE',
   ).length;
 
   const inactiveRetailers = retailers.length - activeRetailers;
 
   const totalWallet = retailers.reduce(
-    (sum, r) => sum + (r.wallet?.balance.toNumber() ?? 0),
+    (sum: number, r: any) =>
+      sum + (r.wallet?.balance?.toNumber?.() ?? 0),
     0,
   );
 
   const totalOrders = retailers.reduce(
-    (sum, r) => sum + r.ordersPlaced.length,
+    (sum: number, r: any) => sum + r.ordersPlaced.length,
     0,
   );
 
   const totalSpending = retailers.reduce(
-    (sum, r) =>
+    (sum: number, r: any) =>
       sum +
       r.ordersPlaced.reduce(
-        (orderSum, o) => orderSum + Number(o.charge),
+        (orderSum: number, o: any) =>
+          orderSum + Number(o.charge),
         0,
       ),
     0,
@@ -114,6 +116,7 @@ export default async function AdminRetailersPage() {
               <p className="text-xs font-semibold text-muted-foreground">
                 Total Retailers
               </p>
+
               <p className="mt-2 text-2xl font-extrabold tracking-tight">
                 {retailers.length}
               </p>
@@ -131,6 +134,7 @@ export default async function AdminRetailersPage() {
               <p className="text-xs font-semibold text-muted-foreground">
                 Active
               </p>
+
               <p className="mt-2 text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
                 {activeRetailers}
               </p>
@@ -148,6 +152,7 @@ export default async function AdminRetailersPage() {
               <p className="text-xs font-semibold text-muted-foreground">
                 Inactive
               </p>
+
               <p className="mt-2 text-2xl font-extrabold tracking-tight text-red-600 dark:text-red-400">
                 {inactiveRetailers}
               </p>
@@ -165,6 +170,7 @@ export default async function AdminRetailersPage() {
               <p className="text-xs font-semibold text-muted-foreground">
                 Wallet Balance
               </p>
+
               <p className="mt-2 text-xl font-extrabold tracking-tight">
                 {formatCurrency(totalWallet)}
               </p>
@@ -182,6 +188,7 @@ export default async function AdminRetailersPage() {
               <p className="text-xs font-semibold text-muted-foreground">
                 Total Spending
               </p>
+
               <p className="mt-2 text-xl font-extrabold tracking-tight">
                 {formatCurrency(totalSpending)}
               </p>
@@ -280,9 +287,10 @@ export default async function AdminRetailersPage() {
               </thead>
 
               <tbody>
-                {retailers.map((r) => {
+                {retailers.map((r: any) => {
                   const spending = r.ordersPlaced.reduce(
-                    (s, o) => s + Number(o.charge),
+                    (s: number, o: any) =>
+                      s + Number(o.charge),
                     0,
                   );
 
@@ -333,7 +341,7 @@ export default async function AdminRetailersPage() {
                       <td className="whitespace-nowrap px-5 py-4">
                         <span className="font-semibold">
                           {formatCurrency(
-                            r.wallet?.balance.toNumber() ?? 0,
+                            r.wallet?.balance?.toNumber?.() ?? 0,
                           )}
                         </span>
                       </td>

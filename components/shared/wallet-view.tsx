@@ -411,7 +411,7 @@ export async function WalletView() {
           ) : (
             <>
               <div className="grid gap-4 lg:grid-cols-2">
-                {methods.map((method) => {
+                {methods.map((method: any) => {
                   const Icon =
                     getMethodIcon(method.type);
 
@@ -454,7 +454,7 @@ export async function WalletView() {
               <div className="rounded-xl border bg-muted/20 p-4">
                 <PaymentRequestForm
                   methods={methods.map(
-                    (method) => ({
+                    (method: any) => ({
                       id: method.id,
                       name: method.name,
                     }),
@@ -479,7 +479,7 @@ export async function WalletView() {
         </CardHeader>
 
         <CardContent className="divide-y divide-border">
-          {payments.map((payment) => (
+          {payments.map((payment: any) => (
             <div
               key={payment.id}
               className="flex items-center justify-between gap-4 py-3"

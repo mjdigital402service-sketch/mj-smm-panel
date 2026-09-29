@@ -21,7 +21,11 @@ function getConfigValue(
   config: unknown,
   key: string,
 ): string {
-  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+  if (
+    !config ||
+    typeof config !== 'object' ||
+    Array.isArray(config)
+  ) {
     return '';
   }
 
@@ -36,16 +40,26 @@ function getMethodDescription(
 ): string {
   if (type === 'UPI') {
     const upiId = getConfigValue(config, 'upiId');
-    return upiId ? `UPI: ${upiId}` : 'UPI payment method';
+
+    return upiId
+      ? `UPI: ${upiId}`
+      : 'UPI payment method';
   }
 
   if (type === 'BANK_TRANSFER') {
     const bankName = getConfigValue(config, 'bankName');
-    return bankName ? `Bank: ${bankName}` : 'Bank transfer method';
+
+    return bankName
+      ? `Bank: ${bankName}`
+      : 'Bank transfer method';
   }
 
   if (type === 'GATEWAY') {
-    const gatewayName = getConfigValue(config, 'gatewayName');
+    const gatewayName = getConfigValue(
+      config,
+      'gatewayName',
+    );
+
     return gatewayName
       ? `Gateway: ${gatewayName}`
       : 'Payment gateway';
@@ -66,6 +80,7 @@ export default async function AdminPaymentsPage() {
       },
       take: 100,
     }),
+
     prisma.paymentMethod.findMany({
       orderBy: {
         createdAt: 'desc',
@@ -466,7 +481,7 @@ export default async function AdminPaymentsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {methods.map((method) => {
+              {methods.map((method: any) => {
                 const toggleAction =
                   togglePaymentMethodAction.bind(
                     null,
@@ -603,7 +618,7 @@ export default async function AdminPaymentsPage() {
             </thead>
 
             <tbody>
-              {payments.map((payment) => (
+              {payments.map((payment: any) => (
                 <tr
                   key={payment.id}
                   className="border-b border-border last:border-0"

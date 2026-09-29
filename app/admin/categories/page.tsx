@@ -17,38 +17,76 @@ export default async function AdminCategoriesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Categories</h1>
-        <p className="text-sm text-muted-foreground">Group services into browsable categories.</p>
+        <p className="text-sm text-muted-foreground">
+          Group services into browsable categories.
+        </p>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Add Category</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Add Category</CardTitle>
+        </CardHeader>
+
         <CardContent>
-          <form action={createCategoryAction} className="flex flex-wrap items-end gap-3">
+          <form
+            action={createCategoryAction}
+            className="flex flex-wrap items-end gap-3"
+          >
             <div className="space-y-1.5">
               <Label htmlFor="name">Category name</Label>
-              <Input id="name" name="name" placeholder="e.g. Instagram Followers" required />
+              <Input
+                id="name"
+                name="name"
+                placeholder="e.g. Instagram Followers"
+                required
+              />
             </div>
+
             <Button type="submit">Add</Button>
           </form>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>All Categories ({categories.length})</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>
+            All Categories ({categories.length})
+          </CardTitle>
+        </CardHeader>
+
         <CardContent className="divide-y divide-border">
-          {categories.map((c) => (
-            <div key={c.id} className="flex items-center justify-between py-3">
+          {categories.map((c: any) => (
+            <div
+              key={c.id}
+              className="flex items-center justify-between py-3"
+            >
               <div>
                 <p className="font-medium">{c.name}</p>
-                <p className="text-xs text-muted-foreground">{c._count.services} services</p>
+                <p className="text-xs text-muted-foreground">
+                  {c._count.services} services
+                </p>
               </div>
+
               <div className="flex items-center gap-3">
-                <Badge variant={c.isActive ? 'success' : 'destructive'}>{c.isActive ? 'Active' : 'Inactive'}</Badge>
-                <CategoryToggle id={c.id} isActive={c.isActive} />
+                <Badge
+                  variant={c.isActive ? 'success' : 'destructive'}
+                >
+                  {c.isActive ? 'Active' : 'Inactive'}
+                </Badge>
+
+                <CategoryToggle
+                  id={c.id}
+                  isActive={c.isActive}
+                />
               </div>
             </div>
           ))}
-          {categories.length === 0 && <p className="py-6 text-center text-muted-foreground">No categories yet.</p>}
+
+          {categories.length === 0 && (
+            <p className="py-6 text-center text-muted-foreground">
+              No categories yet.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
