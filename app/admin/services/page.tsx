@@ -8,6 +8,7 @@ import {
   Activity,
   ShieldCheck,
   TrendingUp,
+  Download,
 } from 'lucide-react';
 
 import { prisma } from '@/lib/prisma';
@@ -28,6 +29,7 @@ import {
 import { computeAdminPrice } from '@/server/services/pricing.service';
 import { formatCurrency } from '@/lib/brand.config';
 import { ServiceToggle } from './service-toggle';
+import { ProviderImportButton } from './provider-import-button';
 
 export default async function AdminServicesPage() {
   const [services, categories, providerServices] = await Promise.all([
@@ -55,6 +57,34 @@ export default async function AdminServicesPage() {
           0,
         ) / services.length
       : 0;
+
+  // Group synced provider services by provider
+  const providerMap = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      serviceCount: number;
+    }
+  >();
+
+  for (const providerService of providerServices) {
+    const providerId = providerService.provider.id;
+
+    const existing = providerMap.get(providerId);
+
+    if (existing) {
+      existing.serviceCount += 1;
+    } else {
+      providerMap.set(providerId, {
+        id: providerId,
+        name: providerService.provider.name,
+        serviceCount: 1,
+      });
+    }
+  }
+
+  const providers = Array.from(providerMap.values());
 
   return (
     <div className="space-y-6 pb-8">
@@ -168,6 +198,75 @@ export default async function AdminServicesPage() {
           </div>
         </div>
       </div>
+
+      {/* Provider Import */}
+      <Card className="overflow-hidden border-border/70 shadow-sm">
+        <CardHeader className="border-b border-border/60 bg-muted/20 px-5 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+              <Download className="h-5 w-5" />
+            </div>
+
+            <div>
+              <CardTitle className="text-base">
+                Import Provider Services
+              </CardTitle>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Import synced provider services into your website service
+                catalog without creating duplicates.
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-5 sm:p-6">
+          {providers.length > 0 ? (
+            <div className="space-y-3">
+              {providers.map((provider) => (
+                <div
+                  key={provider.id}
+                  className="flex flex-col gap-4 rounded-xl border border-border/70 bg-muted/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+                      <Server className="h-5 w-5" />
+                    </div>
+
+                    <div>
+                      <p className="font-semibold">
+                        {provider.name}
+                      </p>
+
+                      <p className="text-xs text-muted-foreground">
+                        {provider.serviceCount.toLocaleString()} synced
+                        provider services
+                      </p>
+                    </div>
+                  </div>
+
+                  <ProviderImportButton
+                    providerId={provider.id}
+                    providerName={provider.name}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border/70 p-8 text-center">
+              <Server className="mx-auto h-8 w-8 text-muted-foreground" />
+
+              <p className="mt-3 font-medium">
+                No synced provider services
+              </p>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                Sync a provider first, then import its services here.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add Service */}
       <Card className="overflow-hidden border-border/70 shadow-sm">

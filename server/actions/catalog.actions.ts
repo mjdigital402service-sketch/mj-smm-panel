@@ -475,6 +475,182 @@ export async function syncProviderServicesAction(
   revalidatePath('/admin/services');
 }
 
+/**
+ * Imports all synced ProviderService rows into the main Service catalog.
+ *
+ * Behaviour:
+ * - Keeps provider service name unchanged.
+ * - Keeps provider service cost/rate unchanged.
+ * - Keeps provider min/max unchanged.
+ * - Keeps dripfeed/refill/cancel capabilities unchanged.
+ * - Creates categories from the provider's category.
+ * - Creates no duplicate Service for the same ProviderService.
+ * - Existing imported services are updated when the provider is synced again.
+ * - Initial admin markup is 0%, so the initial admin price equals
+ *   the provider cost price.
+ * - Pricing can be customized later from the admin pricing system.
+ */
+export async function importProviderServicesAction(
+  providerId: string,
+) {
+  const admin = await requireUser(['ADMIN']);
+
+  if (!providerId) {
+    throw new Error('Provider ID is required.');
+  }
+
+  const providerServices =
+    await prisma.providerService.findMany({
+      where: {
+        providerId,
+      },
+      orderBy: {
+        id: 'asc',
+      },
+    });
+
+  if (providerServices.length === 0) {
+    throw new Error(
+      'No provider services found. Sync the provider first.',
+    );
+  }
+
+  let imported = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const providerService of providerServices) {
+    const rawPayload =
+      providerService.rawPayload &&
+      typeof providerService.rawPayload === 'object'
+        ? (providerService.rawPayload as Record<
+            string,
+            unknown
+          >)
+        : null;
+
+    const providerCategory =
+      typeof rawPayload?.category === 'string'
+        ? rawPayload.category.trim()
+        : '';
+
+    const categoryName =
+      providerCategory || 'Uncategorized';
+
+    const serviceName =
+      providerService.name.trim();
+
+    if (!serviceName) {
+      skipped++;
+      continue;
+    }
+
+    const category =
+      await prisma.category.upsert({
+        where: {
+          name: categoryName,
+        },
+        create: {
+          name: categoryName,
+          isActive: true,
+        },
+        update: {},
+      });
+
+    const existingService =
+      await prisma.service.findFirst({
+        where: {
+          providerServiceId: providerService.id,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    const serviceType =
+      typeof rawPayload?.type === 'string'
+        ? rawPayload.type.trim() || 'default'
+        : 'default';
+
+    if (existingService) {
+      await prisma.service.update({
+        where: {
+          id: existingService.id,
+        },
+        data: {
+          name: serviceName,
+          categoryId: category.id,
+          serviceType,
+          costPrice: providerService.costPrice,
+          minQuantity: providerService.min,
+          maxQuantity: providerService.max,
+          dripfeedEnabled:
+            providerService.dripfeedSupported,
+          refillEnabled:
+            providerService.refillSupported,
+          cancelEnabled:
+            providerService.cancelSupported,
+        },
+      });
+
+      updated++;
+    } else {
+      await prisma.service.create({
+        data: {
+          name: serviceName,
+          categoryId: category.id,
+          providerServiceId: providerService.id,
+          serviceType,
+          costPrice: providerService.costPrice,
+
+          // No initial markup.
+          // Provider price remains unchanged.
+          adminMarkupType: 'PERCENTAGE',
+          adminMarkupValue: 0,
+
+          minQuantity: providerService.min,
+          maxQuantity: providerService.max,
+
+          dripfeedEnabled:
+            providerService.dripfeedSupported,
+          refillEnabled:
+            providerService.refillSupported,
+          cancelEnabled:
+            providerService.cancelSupported,
+
+          isActive: true,
+        },
+      });
+
+      imported++;
+    }
+  }
+
+  await recordAudit({
+    actorId: admin.id,
+    action: 'IMPORT_PROVIDER_SERVICES',
+    entityType: 'Provider',
+    entityId: providerId,
+    metadata: {
+      imported,
+      updated,
+      skipped,
+      total: providerServices.length,
+    },
+  });
+
+  revalidatePath('/admin/services');
+  revalidatePath('/admin/providers');
+  revalidatePath('/admin/pricing');
+
+  return {
+    imported,
+    updated,
+    skipped,
+    total: providerServices.length,
+  };
+}
+
 export async function createServiceAction(
   formData: FormData,
 ) {
@@ -540,15 +716,16 @@ export async function createServiceAction(
     maxQuantity,
   );
 
-  const category = await prisma.category.findUnique({
-    where: {
-      id: categoryId,
-    },
-    select: {
-      id: true,
-      isActive: true,
-    },
-  });
+  const category =
+    await prisma.category.findUnique({
+      where: {
+        id: categoryId,
+      },
+      select: {
+        id: true,
+        isActive: true,
+      },
+    });
 
   if (!category) {
     throw new Error('Selected category was not found.');
