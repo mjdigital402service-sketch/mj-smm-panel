@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/session';
-import { getRetailerPrice } from '@/server/services/pricing.service';
+import { getRetailerPrices } from '@/server/services/pricing.service';
 import { getWalletBalance } from '@/server/services/wallet.service';
 import { NewOrderForm } from '@/components/shared/new-order-form';
 
@@ -37,21 +37,22 @@ export default async function NewOrderPage() {
     getWalletBalance(user.id),
   ]);
 
-  const options = await Promise.all(
-    services.map(async (s: any) => ({
-      id: s.id,
-      serviceCode: s.serviceCode,
-      name: s.name,
-      category: s.category.name,
-      rate: (
-        await getRetailerPrice(s.id, user.id)
-      ).toNumber(),
-      min: s.minQuantity,
-      max: s.maxQuantity,
-      dripfeed: s.dripfeedEnabled,
-      description: s.description ?? '',
-    })),
+  const prices = await getRetailerPrices(
+    services.map((service) => service.id),
+    user.id,
   );
+
+  const options = services.map((s) => ({
+    id: s.id,
+    serviceCode: s.serviceCode,
+    name: s.name,
+    category: s.category.name,
+    rate: prices.get(s.id)?.toNumber() ?? 0,
+    min: s.minQuantity,
+    max: s.maxQuantity,
+    dripfeed: s.dripfeedEnabled,
+    description: s.description ?? '',
+  }));
 
   return (
     <NewOrderForm
