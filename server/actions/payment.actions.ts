@@ -879,15 +879,25 @@ export async function createPricingRuleAction(
       0,
   );
 
-  const categoryId =
+  const rawCategoryId =
     cleanString(
       formData.get('categoryId'),
     ) || undefined;
 
-  const serviceId =
+  const rawServiceId =
     cleanString(
       formData.get('serviceId'),
     ) || undefined;
+
+  const categoryId =
+    scope === 'CATEGORY'
+      ? rawCategoryId
+      : undefined;
+
+  const serviceId =
+    scope === 'SERVICE'
+      ? rawServiceId
+      : undefined;
 
   assertEnumValue(
     scope,
