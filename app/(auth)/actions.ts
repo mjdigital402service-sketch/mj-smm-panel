@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
@@ -12,37 +12,96 @@ export interface LoginState {
   error?: string;
 }
 
-export async function loginAction(_prevState: LoginState, formData: FormData): Promise<LoginState> {
+export async function loginAction(
+  _prevState: LoginState,
+  formData: FormData,
+): Promise<LoginState> {
   const parsed = loginSchema.safeParse({
     username: formData.get('username'),
     password: formData.get('password'),
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Invalid input' };
+    return {
+      error: parsed.error.issues[0]?.message ?? 'Invalid input',
+    };
   }
 
-  const ip = headers().get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const ip =
+    headers().get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown';
 
-  const user = await prisma.user.findUnique({ where: { username: parsed.data.username } });
+  const user = await prisma.user.findUnique({
+    where: { username: parsed.data.username },
+  });
 
-  // Constant-shape response to avoid username enumeration via timing/content.
+  // Avoid revealing whether a username exists.
   const genericError = 'Invalid username or password.';
 
-  if (!user) return { error: genericError };
-  if (user.status !== 'ACTIVE') return { error: 'This account is suspended. Contact support.' };
-
-  const valid = await verifyPassword(user.passwordHash, parsed.data.password);
-  if (!valid) {
-    await recordAudit({ action: 'LOGIN_FAILED', entityType: 'User', entityId: user.id, ipAddress: ip });
+  if (!user) {
     return { error: genericError };
   }
 
-  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), lastLoginIp: ip } });
-  await createSession(user.id, ip, headers().get('user-agent') ?? undefined);
-  await recordAudit({ actorId: user.id, action: 'LOGIN_SUCCESS', entityType: 'User', entityId: user.id, ipAddress: ip });
+  // Pending accounts must wait for administrator approval.
+  if (user.status === 'PENDING') {
+    return {
+      error:
+        'Your account is awaiting admin approval. Please contact support if you need help.',
+    };
+  }
 
-  const destination = user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'DISTRIBUTOR' ? '/distributor/dashboard' : '/retailer/dashboard';
+  // Suspended accounts cannot log in.
+  if (user.status === 'SUSPENDED') {
+    return {
+      error: 'This account is suspended. Contact support.',
+    };
+  }
+
+  const valid = await verifyPassword(
+    user.passwordHash,
+    parsed.data.password,
+  );
+
+  if (!valid) {
+    await recordAudit({
+      action: 'LOGIN_FAILED',
+      entityType: 'User',
+      entityId: user.id,
+      ipAddress: ip,
+    });
+
+    return { error: genericError };
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      lastLoginAt: new Date(),
+      lastLoginIp: ip,
+    },
+  });
+
+  await createSession(
+    user.id,
+    ip,
+    headers().get('user-agent') ?? undefined,
+  );
+
+  await recordAudit({
+    actorId: user.id,
+    action: 'LOGIN_SUCCESS',
+    entityType: 'User',
+    entityId: user.id,
+    ipAddress: ip,
+  });
+
+  const destination =
+    user.role === 'ADMIN'
+      ? '/admin/dashboard'
+      : user.role === 'DISTRIBUTOR'
+        ? '/distributor/dashboard'
+        : '/retailer/dashboard';
+
   redirect(destination);
 }
 

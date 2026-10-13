@@ -1,5 +1,7 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import {
   authenticateApiRequest,
@@ -10,7 +12,8 @@ import {
   placeOrder,
   ValidationError,
 } from '@/server/services/order.service';
-import crypto from 'crypto';
+import { InsufficientBalanceError } from '@/server/services/wallet.service';
+import { ProviderError } from '@/server/providers/base/types';
 
 const createOrderSchema = z.object({
   service: z.string().min(1),
@@ -20,6 +23,90 @@ const createOrderSchema = z.object({
   interval: z.coerce.number().int().positive().optional(),
   comments: z.string().optional(),
 });
+
+type ApiErrorResponse = {
+  status: number;
+  body: {
+    error: string;
+    errorId?: string;
+  };
+};
+
+function logUnexpectedError(
+  context: 'POST' | 'GET',
+  errorId: string,
+  err: unknown,
+) {
+  // Server-side diagnostics only. Never return this information to API clients.
+  // Avoid logging request data, API keys, provider raw responses, or credentials.
+  if (err instanceof Error) {
+    console.error(`[API v1 orders] Unexpected ${context} error`, {
+      errorId,
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+    });
+    return;
+  }
+
+  console.error(`[API v1 orders] Unexpected ${context} error`, {
+    errorId,
+    errorType: typeof err,
+  });
+}
+
+function getPostErrorResponse(err: unknown): ApiErrorResponse {
+  if (err instanceof ApiAuthError) {
+    return {
+      status: err.status,
+      body: { error: err.message },
+    };
+  }
+
+  if (err instanceof ValidationError) {
+    return {
+      status: 400,
+      body: { error: err.message },
+    };
+  }
+
+  if (err instanceof InsufficientBalanceError) {
+    return {
+      status: 402,
+      body: { error: err.message },
+    };
+  }
+
+  if (err instanceof ProviderError) {
+    const errorId = crypto.randomUUID();
+
+    // Provider messages and raw responses can contain sensitive information.
+    console.error('[API v1 orders] Provider error', {
+      errorId,
+      errorType: 'ProviderError',
+      retryable: err.retryable,
+    });
+
+    return {
+      status: err.retryable ? 503 : 502,
+      body: {
+        error: 'The service provider could not process this order.',
+        errorId,
+      },
+    };
+  }
+
+  const errorId = crypto.randomUUID();
+  logUnexpectedError('POST', errorId, err);
+
+  return {
+    status: 500,
+    body: {
+      error: 'An unexpected server error occurred. Please try again later.',
+      errorId,
+    },
+  };
+}
 
 export async function POST(request: NextRequest) {
   let ip = 'unknown';
@@ -33,7 +120,6 @@ export async function POST(request: NextRequest) {
       : Object.fromEntries(request.nextUrl.searchParams.entries());
 
     const key = (params.key as string) ?? null;
-
     const auth = await authenticateApiRequest(request, key);
 
     ip = auth.ip;
@@ -50,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       throw new ApiAuthError(
-        parsed.error.issues.map((i) => i.message).join(', '),
+        parsed.error.issues.map((issue) => issue.message).join(', '),
         400,
       );
     }
@@ -65,12 +151,11 @@ export async function POST(request: NextRequest) {
       throw new ApiAuthError('Service not found.', 404);
     }
 
-    // Deterministic idempotency key from the raw request body prevents
-    // duplicate charges if the client retries the exact same submission.
+    const requestIdempotencyKey = request.headers.get('idempotency-key');
     const idempotencyKey = crypto
       .createHash('sha256')
       .update(
-        `${auth.user.id}:${service.id}:${parsed.data.link}:${parsed.data.quantity}:${request.headers.get('idempotency-key') ?? ''}`,
+        `${auth.user.id}:${service.id}:${parsed.data.link}:${parsed.data.quantity}:${requestIdempotencyKey ?? ''}`,
       )
       .digest('hex');
 
@@ -82,9 +167,7 @@ export async function POST(request: NextRequest) {
       runs: parsed.data.runs,
       interval: parsed.data.interval,
       comments: parsed.data.comments,
-      idempotencyKey: request.headers.get('idempotency-key')
-        ? idempotencyKey
-        : undefined,
+      idempotencyKey: requestIdempotencyKey ? idempotencyKey : undefined,
     });
 
     await logApiCall(
@@ -99,38 +182,34 @@ export async function POST(request: NextRequest) {
       order: order.orderNumber,
     });
   } catch (err) {
+    const result = getPostErrorResponse(err);
+
     if (apiKeyId) {
       await logApiCall(
         apiKeyId,
         '/api/v1/orders',
         'POST',
-        400,
+        result.status,
         ip,
       );
     }
 
-    const status =
-      err instanceof ApiAuthError
-        ? err.status
-        : err instanceof ValidationError
-          ? 400
-          : 500;
-
-    return NextResponse.json(
-      {
-        error:
-          err instanceof Error ? err.message : 'Internal error',
-      },
-      { status },
-    );
+    return NextResponse.json(result.body, {
+      status: result.status,
+    });
   }
 }
 
 export async function GET(request: NextRequest) {
+  let apiKeyId: string | undefined;
+  let ip = 'unknown';
+
   try {
     const key = request.nextUrl.searchParams.get('key');
-
     const auth = await authenticateApiRequest(request, key);
+
+    apiKeyId = auth.apiKey.id;
+    ip = auth.ip;
 
     const orders = await prisma.order.findMany({
       where: {
@@ -151,26 +230,43 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json(
-      orders.map((o: any) => ({
-        order: o.orderNumber,
-        charge: o.charge.toFixed(4),
+      orders.map((order) => ({
+        order: order.orderNumber,
+        charge: order.charge.toFixed(4),
         start_count:
-          o.startCount != null ? String(o.startCount) : null,
-        status: o.status,
+          order.startCount != null ? String(order.startCount) : null,
+        status: order.status,
         remains:
-          o.remains != null ? String(o.remains) : null,
+          order.remains != null ? String(order.remains) : null,
       })),
     );
   } catch (err) {
-    const status =
-      err instanceof ApiAuthError ? err.status : 500;
+    if (err instanceof ApiAuthError) {
+      return NextResponse.json(
+        { error: err.message },
+        { status: err.status },
+      );
+    }
+
+    const errorId = crypto.randomUUID();
+    logUnexpectedError('GET', errorId, err);
+
+    if (apiKeyId) {
+      await logApiCall(
+        apiKeyId,
+        '/api/v1/orders',
+        'GET',
+        500,
+        ip,
+      );
+    }
 
     return NextResponse.json(
       {
-        error:
-          err instanceof Error ? err.message : 'Internal error',
+        error: 'An unexpected server error occurred. Please try again later.',
+        errorId,
       },
-      { status },
+      { status: 500 },
     );
   }
 }

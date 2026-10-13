@@ -1,31 +1,34 @@
 import { prisma } from '@/lib/prisma';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import RegistrationReviewActions from '@/components/shared/registration-review-actions';
 
 export default async function AdminUsersPage({
   searchParams,
 }: {
   searchParams: { q?: string };
 }) {
+  const query = searchParams.q?.trim();
+
   const users = await prisma.user.findMany({
-    where: searchParams.q
+    where: query
       ? {
           OR: [
             {
               name: {
-                contains: searchParams.q,
+                contains: query,
                 mode: 'insensitive',
               },
             },
             {
               username: {
-                contains: searchParams.q,
+                contains: query,
                 mode: 'insensitive',
               },
             },
             {
               email: {
-                contains: searchParams.q,
+                contains: query,
                 mode: 'insensitive',
               },
             },
@@ -45,6 +48,10 @@ export default async function AdminUsersPage({
     take: 200,
   });
 
+  const pendingRetailers = users.filter(
+    (user) => user.role === 'RETAILER' && user.status === 'PENDING',
+  ).length;
+
   return (
     <div className="space-y-6">
       <div>
@@ -57,14 +64,35 @@ export default async function AdminUsersPage({
         </p>
       </div>
 
+      {pendingRetailers > 0 && (
+        <Card>
+          <CardContent className="flex items-center justify-between gap-4 p-4">
+            <div>
+              <p className="font-medium">
+                Pending retailer registrations
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {pendingRetailers} retailer
+                {pendingRetailers === 1 ? '' : 's'} awaiting review
+                in the current results.
+              </p>
+            </div>
+
+            <Badge variant="destructive">
+              {pendingRetailers} Pending
+            </Badge>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-4">
           <form className="flex gap-2">
             <input
               name="q"
-              defaultValue={searchParams.q}
-              placeholder="Search name, username or email…"
-              className="h-10 flex-1 rounded-lg border border-input bg-background px-3 text-sm"
+              defaultValue={query}
+              placeholder="Search name, username or emailâ€¦"
+              className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-sm"
             />
 
             <button
@@ -86,37 +114,38 @@ export default async function AdminUsersPage({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
-                <th className="pb-2 font-medium">Name</th>
-                <th className="pb-2 font-medium">Role</th>
-                <th className="pb-2 font-medium">Distributor</th>
-                <th className="pb-2 font-medium">Status</th>
-                <th className="pb-2 font-medium">Last login</th>
+                <th className="pb-2 pr-4 font-medium">Name</th>
+                <th className="pb-2 pr-4 font-medium">Role</th>
+                <th className="pb-2 pr-4 font-medium">Distributor</th>
+                <th className="pb-2 pr-4 font-medium">Status</th>
+                <th className="pb-2 pr-4 font-medium">Last login</th>
+                <th className="pb-2 font-medium">Registration review</th>
               </tr>
             </thead>
 
             <tbody>
-              {users.map((u: any) => (
+              {users.map((u) => (
                 <tr
                   key={u.id}
                   className="border-b border-border last:border-0"
                 >
-                  <td className="py-2.5">
+                  <td className="py-3 pr-4">
                     <p className="font-medium">{u.name}</p>
 
                     <p className="text-xs text-muted-foreground">
-                      @{u.username} · {u.email}
+                      @{u.username} Â· {u.email}
                     </p>
                   </td>
 
-                  <td className="py-2.5 text-xs">
+                  <td className="py-3 pr-4 text-xs">
                     {u.role}
                   </td>
 
-                  <td className="py-2.5 text-xs">
-                    {u.distributor?.name ?? '—'}
+                  <td className="py-3 pr-4 text-xs">
+                    {u.distributor?.name ?? 'â€”'}
                   </td>
 
-                  <td className="py-2.5">
+                  <td className="py-3 pr-4">
                     <Badge
                       variant={
                         u.status === 'ACTIVE'
@@ -128,11 +157,32 @@ export default async function AdminUsersPage({
                     </Badge>
                   </td>
 
-                  <td className="py-2.5 text-xs text-muted-foreground">
+                  <td className="py-3 pr-4 text-xs text-muted-foreground">
                     {u.lastLoginAt?.toLocaleString() ?? 'Never'}
+                  </td>
+
+                  <td className="py-3">
+                    {u.role === 'RETAILER' && u.status === 'PENDING' ? (
+                      <RegistrationReviewActions userId={u.id} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        â€”
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
+
+              {users.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="py-8 text-center text-sm text-muted-foreground"
+                  >
+                    No users found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </CardContent>

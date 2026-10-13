@@ -1,0 +1,25 @@
+﻿name: Sync Provider Orders
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sync-orders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger order sync
+        env:
+          SYNC_URL: https://mj-smm-panel.vercel.app/api/internal/sync-orders
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "GitHub Actions secret CRON_SECRET is missing"
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --request POST "$SYNC_URL" \
+            --header "x-cron-secret: $CRON_SECRET" \
+            --header "Content-Type: application/json"
