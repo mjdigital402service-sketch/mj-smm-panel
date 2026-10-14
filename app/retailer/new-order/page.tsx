@@ -11,6 +11,7 @@ export default async function NewOrderPage() {
     prisma.service.findMany({
       where: {
         isActive: true,
+        isPublished: true,
         category: { isActive: true },
         providerServiceId: { not: null },
       },

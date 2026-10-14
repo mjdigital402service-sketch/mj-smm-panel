@@ -581,7 +581,6 @@ export async function importProviderServicesAction(
           name: serviceName,
           categoryId: category.id,
           serviceType,
-          costPrice: providerService.costPrice,
           minQuantity: providerService.min,
           maxQuantity: providerService.max,
           dripfeedEnabled:
@@ -619,6 +618,7 @@ export async function importProviderServicesAction(
             providerService.cancelSupported,
 
           isActive: true,
+          isPublished: false,
         },
       });
 
@@ -821,6 +821,36 @@ export async function toggleServiceAction(
   revalidatePath('/admin/services');
 }
 
+export async function toggleServicePublishedAction(
+  id: string,
+  isPublished: boolean,
+) {
+  const admin = await requireUser(['ADMIN']);
+
+  if (!id) {
+    throw new Error('Service ID is required.');
+  }
+
+  if (typeof isPublished !== 'boolean') {
+    throw new Error('Invalid publishing status.');
+  }
+
+  const service = await prisma.service.update({
+    where: { id },
+    data: { isPublished },
+  });
+
+  await recordAudit({
+    actorId: admin.id,
+    action: 'TOGGLE_SERVICE_PUBLISHED',
+    entityType: 'Service',
+    entityId: service.id,
+    metadata: { isPublished },
+  });
+
+  revalidatePath('/admin/services');
+  revalidatePath('/retailer/new-order');
+}
 export async function updateServicePricingAction(
   id: string,
   adminMarkupValue: number,

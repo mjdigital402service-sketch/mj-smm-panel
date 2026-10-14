@@ -28,7 +28,7 @@ export default async function DistributorPricingPage({
       select: { id: true, name: true },
     }),
     prisma.service.findMany({
-      where: { isActive: true },
+      where: { isActive: true, isPublished: true },
       select: {
         id: true,
         serviceCode: true,

@@ -23,7 +23,7 @@ async function handle(request: NextRequest, key: string | null) {
     ip = auth.ip;
 
     const services = await prisma.service.findMany({
-      where: { isActive: true },
+      where: { isActive: true, isPublished: true },
       include: { category: true },
       orderBy: { sortOrder: 'asc' },
     });

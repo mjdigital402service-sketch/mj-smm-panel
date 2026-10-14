@@ -1,5 +1,5 @@
 // ============================================================================
-// SMM PANEL — DATABASE SCHEMA
+// SMM PANEL â€” DATABASE SCHEMA
 // PostgreSQL + Prisma. Decimal used for all monetary fields (never Float).
 // ============================================================================
 
@@ -219,7 +219,7 @@ model Payment {
 }
 
 // ----------------------------------------------------------------------------
-// PROVIDERS (own abstraction layer — see /server/providers)
+// PROVIDERS (own abstraction layer â€” see /server/providers)
 // ----------------------------------------------------------------------------
 
 model Provider {
@@ -312,6 +312,7 @@ model Service {
   refillEnabled   Boolean @default(false)
   cancelEnabled   Boolean @default(false)
   isActive        Boolean @default(true)
+  isPublished     Boolean @default(true)
   sortOrder       Int     @default(0)
 
   createdAt DateTime @default(now())

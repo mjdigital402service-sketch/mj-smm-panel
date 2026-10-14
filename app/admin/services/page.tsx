@@ -29,6 +29,7 @@ import {
 import { computeAdminPrice } from '@/server/services/pricing.service';
 import { formatCurrency } from '@/lib/brand.config';
 import { ServiceToggle } from './service-toggle';
+import { ServicePublishToggle } from './service-publish-toggle';
 import { ProviderImportButton } from './provider-import-button';
 
 export default async function AdminServicesPage() {
@@ -580,19 +581,22 @@ export default async function AdminServicesPage() {
                     </td>
 
                     <td className="px-5 py-4">
-                      <Badge
-                        variant={
-                          s.isActive
-                            ? 'success'
-                            : 'destructive'
-                        }
-                      >
-                        {s.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
+                      <div className="flex flex-col items-start gap-1.5">
+                        <Badge variant={s.isActive ? 'success' : 'destructive'}>
+                          {s.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                        <Badge variant={s.isPublished ? 'default' : 'outline'}>
+                          {s.isPublished ? 'Published' : 'Draft'}
+                        </Badge>
+                      </div>
                     </td>
 
                     <td className="px-5 py-4">
-                      <div className="flex justify-end">
+                      <div className="flex flex-col items-end gap-2">
+                        <ServicePublishToggle
+                          id={s.id}
+                          isPublished={s.isPublished}
+                        />
                         <ServiceToggle
                           id={s.id}
                           isActive={s.isActive}

@@ -35,6 +35,7 @@ export async function ServicesView({
     prisma.service.findMany({
       where: {
         isActive: true,
+        isPublished: true,
         category: { isActive: true },
         ...(searchParams.category
           ? { categoryId: searchParams.category }

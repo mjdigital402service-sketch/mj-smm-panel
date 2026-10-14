@@ -205,6 +205,12 @@ export async function placeOrder(
     );
   }
 
+  if (!service.isPublished) {
+    throw new ValidationError(
+      'Service has not been published yet.',
+    );
+  }
+
   if (!service.isActive) {
     throw new ValidationError(
       'Service is not currently available.',
