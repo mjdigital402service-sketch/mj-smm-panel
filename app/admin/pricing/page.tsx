@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+﻿import { prisma } from '@/lib/prisma';
 import {
   Card,
   CardContent,
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { createPricingRuleAction } from '@/server/actions/payment.actions';
+import { createPricingRuleAction, saveGlobalMarkupAction } from '@/server/actions/payment.actions';
 import { PricingRuleDelete } from './pricing-rule-delete';
 
 export default async function AdminPricingPage() {
@@ -25,6 +25,9 @@ export default async function AdminPricingPage() {
       },
     }),
   ]);
+
+  const globalDistributor = rules.find((r: any) => r.scope === 'GLOBAL' && r.targetRole === 'DISTRIBUTOR');
+  const globalRetailer = rules.find((r: any) => r.scope === 'GLOBAL' && r.targetRole === 'RETAILER');
 
   const categoryMap = Object.fromEntries(
     categories.map((c: any) => [c.id, c.name]),
@@ -47,6 +50,27 @@ export default async function AdminPricingPage() {
         </p>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Global Markup Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={saveGlobalMarkupAction} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Distributor Markup (%)</Label>
+              <Input name="distributorMarkup" type="number" min="0" max="10000" step="0.01" defaultValue={globalDistributor?.markupType === 'PERCENTAGE' ? Number(globalDistributor.markupValue) : 0} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Retailer Markup (%)</Label>
+              <Input name="retailerMarkup" type="number" min="0" max="10000" step="0.01" defaultValue={globalRetailer?.markupType === 'PERCENTAGE' ? Number(globalRetailer.markupValue) : 0} required />
+            </div>
+            <div className="sm:col-span-2">
+              <p className="mb-3 text-sm text-muted-foreground">Distributor markup is applied to the admin price. Retailer markup is applied to the distributor price.</p>
+              <Button type="submit">Save Global Markup</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Add Rule</CardTitle>
@@ -94,7 +118,7 @@ export default async function AdminPricingPage() {
                 name="categoryId"
                 className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
               >
-                <option value="">—</option>
+                <option value="">â€”</option>
 
                 {categories.map((c: any) => (
                   <option key={c.id} value={c.id}>
@@ -111,7 +135,7 @@ export default async function AdminPricingPage() {
                 name="serviceId"
                 className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
               >
-                <option value="">—</option>
+                <option value="">â€”</option>
 
                 {services.map((s: any) => (
                   <option key={s.id} value={s.id}>
@@ -200,7 +224,7 @@ export default async function AdminPricingPage() {
 
           {rules.length === 0 && (
             <p className="py-6 text-center text-muted-foreground">
-              No pricing rules yet — services default to admin
+              No pricing rules yet â€” services default to admin
               markup only.
             </p>
           )}
@@ -209,3 +233,5 @@ export default async function AdminPricingPage() {
     </div>
   );
 }
+
+

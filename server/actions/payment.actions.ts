@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import crypto from 'crypto';
 import { Prisma, WalletTxType } from '@prisma/client';
@@ -851,6 +851,67 @@ export async function deletePaymentMethodAction(
 /* -------------------------------------------------------------------------- */
 /* PRICING RULES                                                              */
 /* -------------------------------------------------------------------------- */
+
+export async function saveGlobalMarkupAction(formData: FormData) {
+  const admin = await requireUser(['ADMIN']);
+  const entries = [
+    { targetRole: 'DISTRIBUTOR' as const, field: 'distributorMarkup' },
+    { targetRole: 'RETAILER' as const, field: 'retailerMarkup' },
+  ];
+  const values = entries.map(({ targetRole, field }) => {
+    const raw = formData.get(field);
+    if (raw === null || String(raw).trim() === '') {
+      throw new Error('Enter both markup percentages.');
+    }
+    const markupValue = Number(raw);
+    if (!Number.isFinite(markupValue) || markupValue < 0 || markupValue > 10000) {
+      throw new Error('Markup must be between 0 and 10000 percent.');
+    }
+    return { targetRole, markupValue };
+  });
+  await prisma.$transaction(async (tx) => {
+    for (const { targetRole, markupValue } of values) {
+      const existing = await tx.pricingRule.findMany({
+        where: { scope: 'GLOBAL', targetRole },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (existing.length > 0) {
+        await tx.pricingRule.updateMany({
+          where: { id: { in: existing.map((rule) => rule.id) } },
+          data: {
+            markupType: 'PERCENTAGE',
+            markupValue,
+            categoryId: null,
+            serviceId: null,
+          },
+        });
+      } else {
+        await tx.pricingRule.create({
+          data: {
+            scope: 'GLOBAL',
+            targetRole,
+            markupType: 'PERCENTAGE',
+            markupValue,
+          },
+        });
+      }
+    }
+  });
+  try {
+    await recordAudit({
+      actorId: admin.id,
+      action: 'UPDATE_GLOBAL_MARKUP',
+      entityType: 'PricingRule',
+      entityId: 'GLOBAL_MARKUP',
+    });
+  } catch (error) {
+    console.error('Global markup audit failed', error);
+  }
+  revalidatePath('/admin/pricing');
+  revalidatePath('/distributor/pricing');
+  revalidatePath('/retailer/new-order');
+}
 
 export async function createPricingRuleAction(
   formData: FormData,
