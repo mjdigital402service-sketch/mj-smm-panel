@@ -40,8 +40,8 @@ async function getDashboardData() {
     processingOrders,
     completedOrders,
     cancelledOrders,
-    revenueAgg,
-    todayRevenueAgg,
+    financialOrders,
+    todayFinancialOrders,
     recentOrders,
     last14DaysOrders,
   ] = await Promise.all([
@@ -62,22 +62,28 @@ async function getDashboardData() {
     prisma.order.count({
       where: { status: { in: ['CANCELLED', 'FAILED'] } },
     }),
-    prisma.order.aggregate({
-      _sum: {
+    prisma.order.findMany({
+      where: { status: { in: ['COMPLETED', 'PARTIAL'] } },
+      select: {
+        status: true,
+        quantity: true,
+        remains: true,
         charge: true,
         profit: true,
         providerCost: true,
       },
     }),
-    prisma.order.aggregate({
-      _sum: {
+    prisma.order.findMany({
+      where: {
+        status: { in: ['COMPLETED', 'PARTIAL'] },
+        createdAt: { gte: startOfToday },
+      },
+      select: {
+        status: true,
+        quantity: true,
+        remains: true,
         charge: true,
         profit: true,
-      },
-      where: {
-        createdAt: {
-          gte: startOfToday,
-        },
       },
     }),
     prisma.order.findMany({
@@ -92,17 +98,46 @@ async function getDashboardData() {
     }),
     prisma.order.findMany({
       where: {
-        createdAt: {
-          gte: new Date(Date.now() - 13 * 86400000),
-        },
+        createdAt: { gte: new Date(Date.now() - 13 * 86400000) },
+        status: { in: ['COMPLETED', 'PARTIAL'] },
       },
       select: {
         createdAt: true,
+        status: true,
+        quantity: true,
+        remains: true,
         charge: true,
         profit: true,
       },
     }),
   ]);
+
+  const deliveredRatio = (o: { status: string; quantity: number; remains: number | null }) => {
+    if (o.status === 'COMPLETED') return 1;
+    if (o.status !== 'PARTIAL' || o.quantity <= 0 || o.remains === null) return 0;
+    return Math.max(0, Math.min(1, (o.quantity - o.remains) / o.quantity));
+  };
+
+  const totals = financialOrders.reduce(
+    (sum, o) => {
+      const ratio = deliveredRatio(o);
+      sum.revenue += Number(o.charge) * ratio;
+      sum.cost += Number(o.providerCost) * ratio;
+      sum.profit += Number(o.profit) * ratio;
+      return sum;
+    },
+    { revenue: 0, cost: 0, profit: 0 },
+  );
+
+  const todayTotals = todayFinancialOrders.reduce(
+    (sum, o) => {
+      const ratio = deliveredRatio(o);
+      sum.revenue += Number(o.charge) * ratio;
+      sum.profit += Number(o.profit) * ratio;
+      return sum;
+    },
+    { revenue: 0, profit: 0 },
+  );
 
   const dayBuckets: Record<
     string,
@@ -125,8 +160,9 @@ async function getDashboardData() {
     const key = o.createdAt.toISOString().slice(0, 10);
 
     if (dayBuckets[key]) {
-      dayBuckets[key].revenue += Number(o.charge);
-      dayBuckets[key].profit += Number(o.profit);
+      const ratio = deliveredRatio(o);
+      dayBuckets[key].revenue += Number(o.charge) * ratio;
+      dayBuckets[key].profit += Number(o.profit) * ratio;
     }
   }
 
@@ -140,11 +176,11 @@ async function getDashboardData() {
     processingOrders,
     completedOrders,
     cancelledOrders,
-    totalRevenue: Number(revenueAgg._sum.charge ?? 0),
-    totalCost: Number(revenueAgg._sum.providerCost ?? 0),
-    totalProfit: Number(revenueAgg._sum.profit ?? 0),
-    todayRevenue: Number(todayRevenueAgg._sum.charge ?? 0),
-    todayProfit: Number(todayRevenueAgg._sum.profit ?? 0),
+    totalRevenue: totals.revenue,
+    totalCost: totals.cost,
+    totalProfit: totals.profit,
+    todayRevenue: todayTotals.revenue,
+    todayProfit: todayTotals.profit,
     recentOrders,
     chartData: Object.entries(dayBuckets).map(([date, v]) => ({
       date: date.slice(5),

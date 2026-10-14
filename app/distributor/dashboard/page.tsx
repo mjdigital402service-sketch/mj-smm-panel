@@ -36,7 +36,7 @@ export default async function DistributorDashboard() {
     totalOrders,
     todayOrders,
     pending,
-    agg,
+    financialOrders,
     recent,
   ] = await Promise.all([
     getWalletBalance(user.id),
@@ -72,9 +72,15 @@ export default async function DistributorDashboard() {
       },
     }),
 
-    prisma.order.aggregate({
-      where: { distributorId: user.id },
-      _sum: {
+    prisma.order.findMany({
+      where: {
+        distributorId: user.id,
+        status: { in: ['COMPLETED', 'PARTIAL'] },
+      },
+      select: {
+        status: true,
+        quantity: true,
+        remains: true,
         charge: true,
         profit: true,
       },
@@ -93,8 +99,25 @@ export default async function DistributorDashboard() {
     }),
   ]);
 
-  const totalSales = Number(agg._sum.charge ?? 0);
-  const totalProfit = Number(agg._sum.profit ?? 0);
+  const totalSales = financialOrders.reduce((sum, o) => {
+    const ratio =
+      o.status === 'COMPLETED'
+        ? 1
+        : o.status === 'PARTIAL' && o.quantity > 0 && o.remains !== null
+          ? Math.max(0, Math.min(1, (o.quantity - o.remains) / o.quantity))
+          : 0;
+    return sum + Number(o.charge) * ratio;
+  }, 0);
+
+  const totalProfit = financialOrders.reduce((sum, o) => {
+    const ratio =
+      o.status === 'COMPLETED'
+        ? 1
+        : o.status === 'PARTIAL' && o.quantity > 0 && o.remains !== null
+          ? Math.max(0, Math.min(1, (o.quantity - o.remains) / o.quantity))
+          : 0;
+    return sum + Number(o.profit) * ratio;
+  }, 0);
 
   return (
     <div className="space-y-6 pb-8">
