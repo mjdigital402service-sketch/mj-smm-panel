@@ -28,7 +28,6 @@ export const adminNav: NavItem[] = [
 export const distributorNav: NavItem[] = [
   { label: 'Dashboard', href: '/distributor/dashboard', icon: 'LayoutDashboard' },
   { label: 'Retailers', href: '/distributor/retailers', icon: 'Store' },
-  { label: 'Services', href: '/distributor/services', icon: 'ListTree' },
   { label: 'Orders', href: '/distributor/orders', icon: 'ShoppingCart' },
   { label: 'Wallet', href: '/distributor/wallet', icon: 'Wallet' },
   { label: 'Transactions', href: '/distributor/transactions', icon: 'Receipt' },
@@ -41,7 +40,6 @@ export const distributorNav: NavItem[] = [
 
 export const retailerNav: NavItem[] = [
   { label: 'Dashboard', href: '/retailer/dashboard', icon: 'LayoutDashboard' },
-  { label: 'Services', href: '/retailer/services', icon: 'ListTree' },
   { label: 'New Order', href: '/retailer/new-order', icon: 'PlusCircle' },
   { label: 'My Orders', href: '/retailer/orders', icon: 'ShoppingCart' },
   { label: 'Wallet', href: '/retailer/wallet', icon: 'Wallet' },
