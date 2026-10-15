@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import { revalidatePath } from 'next/cache';
 import { Prisma } from '@prisma/client';
@@ -850,6 +850,8 @@ export async function toggleServicePublishedAction(
 
   revalidatePath('/admin/services');
   revalidatePath('/retailer/new-order');
+  revalidatePath('/distributor/services');
+  revalidatePath('/retailer/services');
 }
 export async function updateServicePricingAction(
   id: string,
