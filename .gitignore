@@ -9,3 +9,6 @@ next-env.d.ts
 uploads/
 coverage/
 .DS_Store
+
+.vercel
+.env*
